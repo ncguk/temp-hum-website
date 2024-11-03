@@ -1,0 +1,5 @@
+CIRCUITPY_WIFI_SSID="Wifi Router Name"
+CIRCUITPY_WIFI_PASSWORD="Wifi Router Password"
+timezone="Europe/London"
+CIRCUITPY_WEB_API_PASSWORD="Circuitpython Web API password"
+CIRCUITPY_WEB_API_PORT=8080
