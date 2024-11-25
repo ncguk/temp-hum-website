@@ -7,10 +7,16 @@ import adafruit_sht4x # type: ignore
 import board # type: ignore
 import busio # type: ignore
 import ipaddress # type: ignore
+#import mdns # type: ignore
 import socketpool # type: ignore
 import wifi # type: ignore
 from adafruit_httpserver import Server, Request, Response, SSEResponse, GET, MIMETypes # type: ignore
 
+
+# mDNS
+#mdns_server = mdns.Server(wifi.radio)
+#mdns_server.hostname = "dash"
+#mdns_server.advertise_service(service_type="_http", protocol="_tcp", port=5000)
 
 # Set static IP address
 ipv4 = ipaddress.IPv4Address("192.168.0.100")
@@ -24,7 +30,7 @@ pool = socketpool.SocketPool(wifi.radio)
 server = Server(pool, "/resources", debug=False)
 
 MIMETypes.configure(
-    default_to="text/event-stream",
+    default_to="text/html",
     # Unregistering unnecessary MIME types can save memory
     keep_for=[".html", ".css", ".ico", ".js"],
 )
@@ -64,7 +70,7 @@ HTML_TEMPLATE = """
     <meta charset='utf-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
     <meta http-equiv='Cache-Control' content='no-cache'>
-    <meta http-equiv='Content-Type' content='text/event-stream'>
+    <meta http-equiv='Content-Type' content='text/html'>
     <link rel='icon' href='favicon.ico'>
     <link rel='stylesheet' href='index.css'>
     <title>Dashboard</title>
@@ -77,25 +83,25 @@ HTML_TEMPLATE = """
     <h5>Absolute Pressure</h5>
     <h1><span id='press'>-</span></h1>
     <script>
-      const airTempc = document.getElementById('tempc');
-      const eventSource1 = new EventSource('/connect-client1');
-      eventSource1.onmessage = function(event) { airTempc.innerHTML = event.data + '&deg;C'; };
-      <!--eventSource1.onerror = error => airTempc.textContent = error;-->
+      let eventSource1 = new EventSource('/connect-client1');
+      eventSource1.onmessage = function(event) { 
+        document.getElementById('tempc').innerHTML = event.data + '&deg;C';
+      };
 
-      const relHumi = document.getElementById('humid');
-      const eventSource2 = new EventSource('/connect-client2');
-      eventSource2.onmessage = function(event) { relHumi.innerHTML = event.data + '&percnt;'; };
-      <!--eventSource2.onerror = error => relHumi.textContent = error;-->
+      let eventSource2 = new EventSource('/connect-client2');
+      eventSource2.onmessage = function(event) {
+        document.getElementById('humid').innerHTML = event.data + '&percnt;';
+      };
 
-      const absPres = document.getElementById('press');
-      const eventSource3 = new EventSource('/connect-client3');
-      eventSource3.onmessage = function(event) { absPres.innerHTML = event.data + ' hPa'; };
-      <!--eventSource3.onerror = error => absPres.textContent = error;-->
+      let eventSource3 = new EventSource('/connect-client3');
+      eventSource3.onmessage = function(event) {
+        document.getElementById('press').innerHTML = event.data + ' hPa';
+      };
 
-      const airTempf = document.getElementById('tempf');
-      const eventSource4 = new EventSource('/connect-client4');
-      eventSource4.onmessage = function(event) { airTempf.innerHTML = event.data + '&deg;F'; };
-      <!--eventSource4.onerror = error => airTempf.textContent = error;-->
+      let eventSource4 = new EventSource('/connect-client4');
+      eventSource4.onmessage = function(event) {
+        document.getElementById('tempf').innerHTML = event.data + '&deg;F';
+      };
     </script>
   </body>
 </html>
@@ -107,7 +113,7 @@ def client(request: Request):
     return Response(request, HTML_TEMPLATE, content_type="text/html")
 
 @server.route("/connect-client1", GET)
-def connect_client1(request: Request):
+def connect_client1(request: Request, content_type="text/event-stream"):
     global sse_response1  # pylint: disable=global-statement
 
     if sse_response1 is not None:
@@ -118,7 +124,7 @@ def connect_client1(request: Request):
     return sse_response1
 
 @server.route("/connect-client2", GET)
-def connect_client2(request: Request):
+def connect_client2(request: Request, content_type="text/event-stream"):
     global sse_response2  # pylint: disable=global-statement
 
     if sse_response2 is not None:
@@ -129,7 +135,7 @@ def connect_client2(request: Request):
     return sse_response2
 
 @server.route("/connect-client3", GET)
-def connect_client3(request: Request):
+def connect_client3(request: Request, content_type="text/event-stream"):
     global sse_response3  # pylint: disable=global-statement
 
     if sse_response3 is not None:
@@ -140,7 +146,7 @@ def connect_client3(request: Request):
     return sse_response3
 
 @server.route("/connect-client4", GET)
-def connect_client4(request: Request):
+def connect_client4(request: Request, content_type="text/event-stream"):
     global sse_response4  # pylint: disable=global-statement
 
     if sse_response4 is not None:
@@ -177,4 +183,4 @@ while True:
     if sse_response4 is not None and next_event_time < monotonic():
         air_tempf = "%.1f" % temp_conv_f()
         sse_response4.send_event(str(air_tempf))
-        next_event_time = monotonic() + 1
+        next_event_time = monotonic() + 10
