@@ -7,16 +7,16 @@ import adafruit_sht4x # type: ignore
 import board # type: ignore
 import busio # type: ignore
 import ipaddress # type: ignore
-#import mdns # type: ignore
+import mdns # type: ignore
 import socketpool # type: ignore
 import wifi # type: ignore
 from adafruit_httpserver import Server, Request, Response, SSEResponse, GET, MIMETypes # type: ignore
 
 
 # mDNS
-#mdns_server = mdns.Server(wifi.radio)
-#mdns_server.hostname = "dash"
-#mdns_server.advertise_service(service_type="_http", protocol="_tcp", port=5000)
+mdns_server = mdns.Server(wifi.radio)
+mdns_server.hostname = "dash"
+mdns_server.advertise_service(service_type="_http", protocol="_tcp", port=5000)
 
 # Set static IP address
 ipv4 = ipaddress.IPv4Address("192.168.0.100")
@@ -32,7 +32,7 @@ server = Server(pool, "/resources", debug=False)
 MIMETypes.configure(
     default_to="text/html",
     # Unregistering unnecessary MIME types can save memory
-    keep_for=[".html", ".css", ".ico", ".js"],
+    keep_for=[".html", ".css", ".ico"],
 )
 
 sse_response1: SSEResponse = None
@@ -83,22 +83,22 @@ HTML_TEMPLATE = """
     <h5>Absolute Pressure</h5>
     <h1><span id='press'>-</span></h1>
     <script>
-      let eventSource1 = new EventSource('/connect-client1');
+      const eventSource1 = new EventSource('/connect-client1');
       eventSource1.onmessage = function(event) { 
         document.getElementById('tempc').innerHTML = event.data + '&deg;C';
       };
 
-      let eventSource2 = new EventSource('/connect-client2');
+      const eventSource2 = new EventSource('/connect-client2');
       eventSource2.onmessage = function(event) {
         document.getElementById('humid').innerHTML = event.data + '&percnt;';
       };
 
-      let eventSource3 = new EventSource('/connect-client3');
+      const eventSource3 = new EventSource('/connect-client3');
       eventSource3.onmessage = function(event) {
         document.getElementById('press').innerHTML = event.data + ' hPa';
       };
 
-      let eventSource4 = new EventSource('/connect-client4');
+      const eventSource4 = new EventSource('/connect-client4');
       eventSource4.onmessage = function(event) {
         document.getElementById('tempf').innerHTML = event.data + '&deg;F';
       };
@@ -161,23 +161,20 @@ server.start(str(wifi.radio.ipv4_address))
 while True:
     server.poll()
 
-    # Send an event every n seconds
+    # Add next_event_time to the last response only
     if sse_response1 is not None and next_event_time < monotonic():
         air_temp = "%.1f" % temp()
         sse_response1.send_event(str(air_temp))
-        #next_event_time = monotonic()
 
     # Send an event every n seconds
     if sse_response2 is not None and next_event_time < monotonic():
         rel_humi = "%.1f" % rel_humidity()
         sse_response2.send_event(str(rel_humi))
-        #next_event_time = monotonic()
 
     # Send an event every n seconds
     if sse_response3 is not None and next_event_time < monotonic():
         abs_pres = "%.1f" % abs_pressure()
         sse_response3.send_event(str(abs_pres))
-        #next_event_time = monotonic()
 
     # Send an event every n seconds
     if sse_response4 is not None and next_event_time < monotonic():
